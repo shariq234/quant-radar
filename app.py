@@ -52,11 +52,11 @@ if selected_asset != st.session_state.prev_asset:
     st.session_state.stable_rsi = float(np.random.uniform(25, 75))
     seconds_left = refresh_interval
 
-# Core Data Generator based on strict seed to prevent calculations jumping around
+# Core Data Generator based on absolute math to prevent crash
 def get_stable_market_stream(ticker):
-    # Dynamic runtime variance matching the exact selected coin
-    asset_seed = int(time.time() + hash(ticker)) // 60 
-    np.random.seed(asset_seed)
+    # FIX: abs() lagaya taake value hamesha positive rahe aur integer overflow na ho
+    asset_seed = abs(int(time.time() + hash(ticker))) // 60 
+    np.random.seed(asset_seed % 2**32) # Strictly bound within standard range
     
     price_map = {
         "BTC-USDT (MEXC Heavy)": 58650.0,
@@ -80,12 +80,12 @@ last_price = float(df_stream['close'].iloc[-1])
 
 # --- MATHEMATICAL TARGET MATRIX (Entry vs Selling Prices) ---
 if st.session_state.stable_rsi < 45:
-    action_text, action_style, precision, target_text = "🟢 PUMP PATTERN INITIATED: ENTER LONG (CALL) 🚀", "action-buy", "92.4%", "HOLD LONG POSITION"
+    action_text, action_style, precision, target_text = "🟢 PUMP PATTERN INITIATED: ENTER LONG (CALL) 🚀", "action-buy", "92.4%", "OPEN LONG POSITION NOW"
     entry_price = last_price
     selling_price = last_price * 1.015  # Target +1.5% profit pump zone
     stop_loss = last_price * 0.993     # -0.7% risk management cap
 elif st.session_state.stable_rsi > 55:
-    action_text, action_style, precision, target_text = "🔴 DUMP PATTERN INITIATED: ENTER SHORT (PUT) 📉", "action-sell", "91.8%", "HOLD SHORT POSITION"
+    action_text, action_style, precision, target_text = "🔴 DUMP PATTERN INITIATED: ENTER SHORT (PUT) 📉", "action-sell", "91.8%", "OPEN SHORT POSITION NOW"
     entry_price = last_price
     selling_price = last_price * 0.985  # Target -1.5% dump zone profit capture
     stop_loss = last_price * 1.007     # Risk cap
