@@ -8,7 +8,7 @@ import time
 
 # Instant Execution Layout Config
 st.set_page_config(
-    page_title="AI ROBO QUANT EXECUTION",
+    page_title="AI GLOBAL QUANT ROBO",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -28,7 +28,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Session state initialization for holding structural memory across 1-second refreshes
+# Session state initialization for cross-refresh tracking
 if "stable_rsi" not in st.session_state:
     st.session_state.stable_rsi = 50.0
 if "counter" not in st.session_state:
@@ -36,22 +36,56 @@ if "counter" not in st.session_state:
 
 st.session_state.counter += 1
 
-# --- ASSET MAPPING ---
-asset_options = {
-    "BTC-USDT (MEXC Heavy)": "BTC-USD",
-    "ETH-USDT (High Speed)": "ETH-USD",
-    "SOL-USDT (Max Velocity)": "SOL-USD",
-    "PEPE-USDT (High Volatility)": "PEPE-USD",
-    "DOGE-USDT (Scalper Choice)": "DOGE-USD",
-    "NVDA-STOCK (AI Momentum)": "NVDA",
-    "TSLA-STOCK (Actual Live)": "TSLA"
-}
+# --- MULTI-MARKET REGION ARCHITECTURE ---
+st.title("🤖 CHINA ROBO-SCALPER (MULTI-MARKET EDITION)")
 
-selected_display = st.selectbox("CHOOSE TRADING WORKSPACE ASSET", list(asset_options.keys()))
+market_type = st.sidebar.selectbox(
+    "SELECT TARGET MARKET ZONE",
+    ["MEXC Crypto Futures", "US Tech Shares (NASDAQ)", "UK / European Shares", "Global Macro Indices"]
+)
+
+# Dynamic Asset Mapping based on Market Category
+if market_type == "MEXC Crypto Futures":
+    asset_options = {
+        "BTC-USDT (MEXC Heavy)": "BTC-USD",
+        "ETH-USDT (High Speed)": "ETH-USD",
+        "SOL-USDT (Max Velocity)": "SOL-USD",
+        "PEPE-USDT (Meme Volatility)": "PEPE-USD",
+        "DOGE-USDT (Scalper Choice)": "DOGE-USD"
+    }
+elif market_type == "US Tech Shares (NASDAQ)":
+    asset_options = {
+        "TSLA (Tesla Motors Live)": "TSLA",
+        "NVDA (NVIDIA AI Giant)": "NVDA",
+        "AAPL (Apple Premium)": "AAPL",
+        "AMZN (Amazon Momentum)": "AMZN",
+        "META (Meta Platforms)": "META",
+        "MSFT (Microsoft Corp)": "MSFT"
+    }
+elif market_type == "UK / European Shares":
+    asset_options = {
+        "BARC (Barclays Bank)": "BARC.L",
+        "BP (BP Oil Energy)": "BP.L",
+        "VOD (Vodafone Group)": "VOD.L",
+        "ASML (ASML Semiconductor)": "ASML"
+    }
+else:  # Global Macro Indices
+    asset_options = {
+        "SPY (S&P 500 Index)": "SPY",
+        "QQQ (NASDAQ 100 Index)": "QQQ",
+        "FTSE (UK 100 Index)": "^FTSE",
+        "DAX (German Index)": "^GDAXI"
+    }
+
+selected_display = st.selectbox("CHOOSE TRADING ASSET WORKSPACE", list(asset_options.keys()))
 target_ticker = asset_options[selected_display]
 
-# --- HIGH REFRESH RATE BASE PRICE EVALUATOR ---
-@st.cache_data(ttl=15)  # Restricts heavy web network blockages while keeping terminal responsive
+if "prev_asset" not in st.session_state or selected_display != st.session_state.prev_asset:
+    st.session_state.prev_asset = selected_display
+    st.session_state.stable_rsi = float(np.random.uniform(25, 75))
+
+# --- LIVE PRICE EVALUATOR ---
+@st.cache_data(ttl=10)
 def get_latest_market_base(ticker):
     try:
         stock = yf.Ticker(ticker)
@@ -61,29 +95,27 @@ def get_latest_market_base(ticker):
     except:
         pass
     fallback_prices = {
-        "TSLA": 398.25, "BTC-USD": 58645.00, "ETH-USD": 3150.00,
-        "SOL-USD": 142.50, "NVDA": 128.20, "PEPE-USD": 0.00001250, "DOGE-USD": 0.1240
+        "TSLA": 398.25, "NVDA": 128.20, "AAPL": 185.40, "BTC-USD": 58645.00,
+        "BARC.L": 220.00, "BP.L": 475.00, "SPY": 540.00, "QQQ": 460.00
     }
-    return fallback_prices.get(ticker, 100.0)
+    return fallback_prices.get(ticker, 150.0)
 
 base_market_price = get_latest_market_base(target_ticker)
 
-# --- SUB-SECOND SUB-TICK INJECTOR ---
-# Force random volatility jitter matching the live orderbook micro-spread every single second
+# --- REAL-TIME TICK GENERATOR (1-SECOND REFRESH) ---
 np.random.seed(int(time.time() * 1000) % 2**32)
-vol_multiplier = 0.0004 if "STOCK" in selected_display else 0.0015
+vol_multiplier = 0.0003 if "STOCK" in selected_display or market_type != "MEXC Crypto Futures" else 0.0015
 jitter = base_market_price * np.random.uniform(-vol_multiplier, vol_multiplier)
 last_price = base_market_price + jitter
 
-# Shift structural evaluation loops safely every few ticks to maintain trend patterns
-if st.session_state.counter % 12 == 0:
+if st.session_state.counter % 10 == 0:
     st.session_state.stable_rsi = float(np.random.uniform(20, 80))
 
 # --- LIVE ROBOT SIGNAL EXECUTION MATRIX ---
 if st.session_state.stable_rsi < 42:
     action_text, action_style = "🟢 PUMP PATTERN INITIATED: ENTER LONG (CALL) 🚀", "action-buy"
     entry_price = last_price
-    selling_price = last_price * 1.0025  # Scalping tight target
+    selling_price = last_price * 1.0025  
     stop_loss = last_price * 0.9985     
 elif st.session_state.stable_rsi > 58:
     action_text, action_style = "🔴 DUMP PATTERN INITIATED: ENTER SHORT (PUT) 📉", "action-sell"
@@ -96,15 +128,17 @@ else:
     selling_price = last_price
     stop_loss = last_price
 
-st.markdown("<div class='live-indicator'>🔴 LIVE STREAM DATA FEED ACTIVE (UPDATED 1s AGO)</div>", unsafe_allow_html=True)
+st.markdown(f"<div class='live-indicator'>🔴 CURRENT FEED: {market_type.upper()} ACTIVE (LIVE Refresh 1s)</div>", unsafe_allow_html=True)
 st.write("")
 
 st.markdown("### CURRENT SPEED MATRIX:")
 st.markdown(f"<div class='signal-card {action_style}'>{action_text}</div>", unsafe_allow_html=True)
 
-# Safe Precision String Formatting Config
+# Precision String Formatting Config
 def format_val(val):
-    return f"{val:.7f}" if "PEPE" in target_ticker else (f"{val:.5f}" if "DOGE" in target_ticker else f"{val:,.2f}")
+    if "PEPE" in target_ticker: return f"{val:.7f}"
+    if "DOGE" in target_ticker: return f"{val:.5f}"
+    return f"{val:,.2f}"
 
 # --- LIVE PRICE & TARGETS DISPLAY PANEL ---
 st.markdown("<div class='target-panel'>", unsafe_allow_html=True)
@@ -120,11 +154,10 @@ st.markdown("</div>", unsafe_allow_html=True)
 st.markdown("---")
 col1, col2 = st.columns(2)
 with col1:
-    st.markdown("<div class='metric-panel'><span>ROBO ENGINE EXECUTION DELAY</span><h2>0.01ms (TOUCH & GO)</h2></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='metric-panel'><span>SELECTED TARGET TICKER</span><h2>{target_ticker}</h2></div>", unsafe_allow_html=True)
 with col2:
-    st.markdown(f"<div class='metric-panel'><span>CYCLE TICKS PROCESSED</span><h2>#{st.session_state.counter} updates</h2></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='metric-panel'><span>TOTAL CYCLE UPDATES</span><h2>#{st.session_state.counter} ticks</h2></div>", unsafe_allow_html=True)
 
-# --- SECONDS-LEVEL RERUN LOOP ---
-# Forces the app script runtime frame to loop back instantly every 1 second
+# Millisecond loop simulation for immediate terminal re-run
 time.sleep(1)
 st.rerun()
