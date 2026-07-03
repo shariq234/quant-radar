@@ -19,8 +19,8 @@ st.markdown("""
     .stApp { background-color: #060913; color: #ffffff; }
     div[data-testid="stMetricValue"] { font-size: 32px !important; font-weight: bold !important; color: #00ffcc !important; }
     .signal-card { padding: 25px; border-radius: 12px; text-align: center; font-size: 38px; font-weight: 900; margin: 15px 0; letter-spacing: 2px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-    .action-buy { background-color: #00c873; color: #ffffff; border: 3px solid #00ff88; animation: pulse 1s infinite; }
-    .action-sell { background-color: #ff3366; color: #ffffff; border: 3px solid #ff0055; animation: pulse 1s infinite; }
+    .action-buy { background-color: #00c873; color: #ffffff; border: 3px solid #00ff88; }
+    .action-sell { background-color: #ff3366; color: #ffffff; border: 3px solid #ff0055; }
     .action-exit { background-color: #ffcc00; color: #000000; border: 3px solid #ffa600; font-size: 32px; }
     .action-wait { background-color: #1c2538; color: #8a99ad; border: 1px solid #344563; }
     .metric-panel { background-color: #0f1626; padding: 15px; border-radius: 8px; border: 1px solid #1f2c47; }
@@ -64,7 +64,6 @@ def compute_robo_signals(df):
     close_p = df['close']
     rsi = ta.momentum.rsi(close_p, window=14).iloc[-1]
     
-    # High frequency triggers matching aggressive scalping rules
     v_factor = float(df['volume'].tail(5).std() % 10)
     
     if rsi < 32 or v_factor > 8.2:
@@ -77,9 +76,8 @@ def compute_robo_signals(df):
         return "⏳ SCANNING ORDERBOOK SPREAD... HOLD POSITION", "action-wait", "N/A", "Waiting for dynamic volatility breakout pattern."
 
 # --- APPLICATION INTERFACE SYSTEM ---
-st.title("🤖 CHINA ROBO-SCALPER ENGINE (MEXC FUTURES SECURE)")
+st.title("🤖 CHINA ROBO-SCALPER ENGINE (MEXC FUTURES)")
 
-# Upgraded Asset Selection containing high speed coins and macro shares
 selected_asset = st.selectbox(
     "CHOOSE MEXC FUTURE / STOCK ASSET WORKSPACE", 
     [
@@ -108,10 +106,17 @@ st.markdown(f"<div class='metric-panel'><b style='color:#ffcc00;'>🤖 NEXT IMME
 
 st.markdown("---")
 
-# Secondary telemetry tracking data points
+# Safe String Formatting Fix
+last_price = float(df_stream['close'].iloc[-1])
+if "PEPE" in selected_asset or "DOGE" in selected_asset:
+    formatted_price = f"{last_price:.6f}"
+else:
+    formatted_price = f"{last_price:,.2f}"
+
+# Telemetry tracking data panels
 col1, col2, col3 = st.columns(3)
 with col1:
-    st.markdown(f"<div class='metric-panel'><span>CURRENT ASSET PRICE</span><h2>{df_stream['close'].iloc[-1]:,.5f if 'PEPE' in selected_asset or 'DOGE' in selected_asset else ',.2f'}</h2></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='metric-panel'><span>CURRENT ASSET PRICE</span><h2>${formatted_price}</h2></div>", unsafe_allow_html=True)
 with col2:
     st.markdown(f"<div class='metric-panel'><span>ROBO CONFIDENCE CAP</span><h2>{precision}</h2></div>", unsafe_allow_html=True)
 with col3:
