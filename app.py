@@ -1,148 +1,204 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import ta
-from datetime import datetime
-import time
+import plotly.graph_objects as go
+from datetime import datetime, timedelta
 
-# Absolute Clean Layout Config
+# Configuration for mobile-friendly layout
 st.set_page_config(
-    page_title="AI GLOBAL QUANT ROBO PRO",
-    layout="wide",
-    initial_sidebar_state="collapsed"
+    page_title="Fitness Tracker Pro",
+    page_icon="🏃‍♂️",
+    layout="centered",
+    initial_sidebar_state="expanded"
 )
 
-# Cyberpunk Scalper High-Contrast Interface
+# Custom CSS for a clean, mobile-friendly interface
 st.markdown("""
     <style>
-    .stApp { background-color: #060913; color: #ffffff; }
-    .signal-card { padding: 25px; border-radius: 12px; text-align: center; font-size: 34px; font-weight: 900; margin: 10px 0; letter-spacing: 1px; }
-    .action-buy { background-color: #00c873; color: #ffffff; border: 3px solid #00ff88; }
-    .action-sell { background-color: #ff3366; color: #ffffff; border: 3px solid #ff0055; }
-    .action-wait { background-color: #1c2538; color: #00ffcc; border: 2px dashed #00ffcc; }
-    .metric-panel { background-color: #0f1626; padding: 15px; border-radius: 8px; border: 1px solid #1f2c47; margin-bottom: 10px; }
-    .target-panel { background-color: #161f38; padding: 15px; border-radius: 8px; border-left: 5px solid #ffcc00; margin-top: 10px; }
-    .live-indicator { color: #00ffcc; font-weight: bold; animation: blinker 0.8s linear infinite; text-align: center; font-size: 14px; }
-    @keyframes blinker { 50% { opacity: 0; } }
+    .metric-card {
+        background-color: #1e1e24;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .metric-value {
+        font-size: 3rem;
+        font-weight: bold;
+        margin: 10px 0;
+    }
+    .metric-label {
+        font-size: 1.2rem;
+        color: #a0a0a0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    .status-green { color: #4CAF50; }
+    .status-yellow { color: #FFC107; }
+    .status-red { color: #F44336; }
+
+    /* Optimize for mobile screens */
+    @media (max-width: 768px) {
+        .metric-value { font-size: 2.5rem; }
+        .metric-label { font-size: 1rem; }
+        .stPlotlyChart { width: 100% !important; }
+    }
     </style>
 """, unsafe_allow_html=True)
 
-# State initialization loops
-if "stable_rsi" not in st.session_state:
-    st.session_state.stable_rsi = float(np.random.uniform(20, 80))
-if "counter" not in st.session_state:
-    st.session_state.counter = 0
-if "current_active_asset" not in st.session_state:
-    st.session_state.current_active_asset = ""
+# Generate mock 7-day historical data if not in session state
+if 'history' not in st.session_state:
+    dates = [(datetime.now() - timedelta(days=i)).strftime('%m-%d') for i in range(6, -1, -1)]
+    st.session_state.history = pd.DataFrame({
+        'Date': dates,
+        'Recovery': np.random.randint(30, 95, 7),
+        'Strain': np.random.uniform(8.0, 18.0, 7).round(1),
+        'Sleep_Performance': np.random.randint(50, 100, 7)
+    })
 
-st.session_state.counter += 1
+# --- SIDEBAR: DATA INPUT ---
+st.sidebar.header("📊 Daily Log")
+st.sidebar.markdown("Enter today's biometrics:")
 
-st.title("🤖 CHINA ROBO-SCALPER (ULTRA-SPEED TERMINAL)")
+hrv_input = st.sidebar.number_input("HRV (ms)", min_value=10, max_value=200, value=65)
+rhr_input = st.sidebar.number_input("Resting Heart Rate (bpm)", min_value=30, max_value=120, value=55)
+sleep_hours = st.sidebar.slider("Sleep Duration (hours)", min_value=0.0, max_value=14.0, value=7.5, step=0.1)
+workout_intensity = st.sidebar.slider("Workout Intensity", min_value=0, max_value=10, value=6)
 
-# SIDEBAR REGION SELECTOR
-market_type = st.sidebar.selectbox(
-    "SELECT TARGET MARKET ZONE",
-    ["MEXC Crypto Futures", "US Tech Shares (NASDAQ)", "UK / European Shares", "Global Macro Indices"]
-)
+if st.sidebar.button("Log Today's Data"):
+    # Calculate new metrics based on input
 
-# FIXED REAL-TIME MARKET BASE PRICES
-if market_type == "MEXC Crypto Futures":
-    asset_options = {
-        "BTC-USDT (MEXC Heavy)": 58645.00,
-        "ETH-USDT (High Speed)": 3150.00,
-        "SOL-USDT (Max Velocity)": 142.50,
-        "PEPE-USDT (Meme Volatility)": 0.00001250,
-        "DOGE-USDT (Scalper Choice)": 0.1240
-    }
-elif market_type == "US Tech Shares (NASDAQ)":
-    asset_options = {
-        "TSLA (Tesla Motors Live)": 398.25,
-        "NVDA (NVIDIA AI Giant)": 128.20,
-        "AAPL (Apple Premium)": 185.40,
-        "AMZN (Amazon Momentum)": 178.50,
-        "META (Meta Platforms)": 495.10,
-        "MSFT (Microsoft Corp)": 420.30
-    }
-elif market_type == "UK / European Shares":
-    asset_options = {
-        "BARC (Barclays Bank)": 220.00,
-        "BP (BP Oil Energy)": 475.00,
-        "VOD (Vodafone Group)": 72.50,
-        "ASML (ASML Semiconductor)": 845.00
-    }
-else:  # Global Macro Indices
-    asset_options = {
-        "SPY (S&P 500 Index)": 540.00,
-        "QQQ (NASDAQ 100 Index)": 460.00,
-        "FTSE (UK 100 Index)": 8150.00,
-        "DAX (German Index)": 18200.00
-    }
+    # 1. Recovery Score (0-100)
+    # Higher HRV and lower RHR generally mean better recovery. Mock formula for demonstration.
+    base_recovery = 50
+    hrv_factor = (hrv_input - 60) * 0.5
+    rhr_factor = (60 - rhr_input) * 0.5
+    sleep_factor = (sleep_hours - 7) * 5
+    new_recovery = max(0, min(100, int(base_recovery + hrv_factor + rhr_factor + sleep_factor)))
 
-selected_display = st.selectbox("CHOOSE TRADING ASSET WORKSPACE", list(asset_options.keys()))
-base_market_price = asset_options[selected_display]
+    # 2. Strain Score (0-21)
+    # Logarithmic scale approximation based on intensity
+    new_strain = round(min(21.0, workout_intensity * 2.1), 1)
 
-# ABSOLUTE STATE HARD PURGE WIPE
-if selected_display != st.session_state.current_active_asset:
-    st.session_state.current_active_asset = selected_display
-    st.session_state.stable_rsi = float(np.random.uniform(15, 85))
-    st.session_state.counter = 1
+    # 3. Sleep Performance (0-100)
+    # Assuming 8 hours is 100% need
+    new_sleep_perf = max(0, min(100, int((sleep_hours / 8.0) * 100)))
 
-# --- LIGHTNING FAST INTERNAL TICK ENGINE (0.00s DELAY) ---
-np.random.seed(int(time.time() * 1000) % 2**32)
-vol_scale = 0.00015 if market_type != "MEXC Crypto Futures" else 0.00085
-jitter = base_market_price * np.random.uniform(-vol_scale, vol_scale)
-live_price = base_market_price + jitter
+    # Update history (shift and append)
+    new_row = pd.DataFrame({
+        'Date': [datetime.now().strftime('%m-%d')],
+        'Recovery': [new_recovery],
+        'Strain': [new_strain],
+        'Sleep_Performance': [new_sleep_perf]
+    })
 
-if st.session_state.counter % 6 == 0:
-    st.session_state.stable_rsi = float(np.random.uniform(10, 90))
+    updated_history = pd.concat([st.session_state.history.iloc[1:], new_row], ignore_index=True)
+    st.session_state.history = updated_history
+    st.sidebar.success("Data logged successfully!")
 
-# --- LIVE ROBOT SIGNAL EXECUTION MATRIX ---
-if st.session_state.stable_rsi < 38:
-    action_text, action_style = "🟢 PUMP PATTERN INITIATED: ENTER LONG (CALL) 🚀", "action-buy"
-    entry_price = live_price
-    selling_price = live_price * 1.0015  
-    stop_loss = live_price * 0.9992     
-elif st.session_state.stable_rsi > 62:
-    action_text, action_style = "🔴 DUMP PATTERN INITIATED: ENTER SHORT (PUT) 📉", "action-sell"
-    entry_price = live_price
-    selling_price = live_price * 0.9985  
-    stop_loss = live_price * 1.0008     
-else:
-    action_text, action_style = "⏳ ORDERBOOK CONSOLIDATION: WAIT FOR BREAKOUT", "action-wait"
-    entry_price = live_price
-    selling_price = live_price
-    stop_loss = live_price
+# --- MAIN APP AREA ---
+st.title("📱 Fitness Tracker Pro")
+st.markdown("Your daily performance and recovery insights.")
 
-st.markdown(f"<div class='live-indicator'>⚡ NATIVE INTERNAL RADAR ACTIVE | NO-DELAY SYNC</div>", unsafe_allow_html=True)
-st.write("")
+# Get today's data (last row of history)
+today_data = st.session_state.history.iloc[-1]
+recovery = today_data['Recovery']
+strain = today_data['Strain']
+sleep_perf = today_data['Sleep_Performance']
 
-st.markdown("### CURRENT SPEED MATRIX:")
-st.markdown(f"<div class='signal-card {action_style}'>{action_text}</div>", unsafe_allow_html=True)
+# Determine colors
+def get_recovery_color(val):
+    if val >= 67: return "status-green"
+    elif val >= 34: return "status-yellow"
+    else: return "status-red"
 
-# Safe Dynamic Precision String Formatting Config
-def format_val(val):
-    if "PEPE" in selected_display: return f"{val:.7f}"
-    if "DOGE" in selected_display: return f"{val:.5f}"
-    return f"{val:,.2f}"
+def get_sleep_color(val):
+    if val >= 85: return "status-green"
+    elif val >= 70: return "status-yellow"
+    else: return "status-red"
 
-# --- LIVE PRICE & TARGETS DISPLAY PANEL ---
-st.markdown("<div class='target-panel'>", unsafe_allow_html=True)
-c_target1, c_target2, c_target3 = st.columns(3)
-with c_target1:
-    st.markdown(f"**🎯 NATIVE ENTRY PRICE:** <h3 style='color:#00ffcc;margin:0;'>${format_val(entry_price)}</h3>", unsafe_allow_html=True)
-with c_target2:
-    st.markdown(f"**💰 TARGET SELLING PRICE (TP):** <h3 style='color:#ffcc00;margin:0;'>${format_val(selling_price)}</h3>", unsafe_allow_html=True)
-with c_target3:
-    st.markdown(f"**🛑 EMERGENCY STOP LOSS (SL):** <h3 style='color:#ff3366;margin:0;'>${format_val(stop_loss)}</h3>", unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
+# Display Metrics in Columns
+col1, col2, col3 = st.columns(3)
 
-st.markdown("---")
-col1, col2 = st.columns(2)
 with col1:
-    st.markdown(f"<div class='metric-panel'><span>SELECTED TARGET ZONE</span><h2>{market_type}</h2></div>", unsafe_allow_html=True)
-with col2:
-    st.markdown(f"<div class='metric-panel'><span>TOTAL SYSTEM CYCLE TICKS</span><h2>#{st.session_state.counter} updates</h2></div>", unsafe_allow_html=True)
+    color_class = get_recovery_color(recovery)
+    st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">Recovery</div>
+            <div class="metric-value {color_class}">{recovery}%</div>
+        </div>
+    """, unsafe_allow_html=True)
 
-# 400ms accelerated terminal refresh step loop handler
-time.sleep(0.4)
-st.rerun()
+with col2:
+    # Strain doesn't have a strict color code like recovery, usually blue/white
+    st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">Day Strain</div>
+            <div class="metric-value" style="color: #4da6ff;">{strain}</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+with col3:
+    color_class = get_sleep_color(sleep_perf)
+    st.markdown(f"""
+        <div class="metric-card">
+            <div class="metric-label">Sleep Perf</div>
+            <div class="metric-value {color_class}">{sleep_perf}%</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+# --- CHARTS ---
+st.markdown("### 📈 7-Day Trends")
+
+tab1, tab2 = st.tabs(["Recovery & Sleep", "Strain"])
+
+hist_df = st.session_state.history
+
+with tab1:
+    fig1 = go.Figure()
+    fig1.add_trace(go.Bar(
+        x=hist_df['Date'],
+        y=hist_df['Recovery'],
+        name='Recovery %',
+        marker_color=[
+            '#4CAF50' if val >= 67 else '#FFC107' if val >= 34 else '#F44336'
+            for val in hist_df['Recovery']
+        ]
+    ))
+    fig1.add_trace(go.Scatter(
+        x=hist_df['Date'],
+        y=hist_df['Sleep_Performance'],
+        name='Sleep Perf %',
+        mode='lines+markers',
+        line=dict(color='#8c9eff', width=2),
+        marker=dict(size=8)
+    ))
+    fig1.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font_color='white',
+        margin=dict(l=0, r=0, t=30, b=0),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    st.plotly_chart(fig1, use_container_width=True)
+
+with tab2:
+    fig2 = go.Figure()
+    fig2.add_trace(go.Scatter(
+        x=hist_df['Date'],
+        y=hist_df['Strain'],
+        name='Strain',
+        mode='lines+markers',
+        fill='tozeroy',
+        line=dict(color='#4da6ff', width=3),
+        marker=dict(size=10)
+    ))
+    fig2.update_layout(
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+        font_color='white',
+        margin=dict(l=0, r=0, t=30, b=0),
+        yaxis=dict(range=[0, 21])
+    )
+    st.plotly_chart(fig2, use_container_width=True)

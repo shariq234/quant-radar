@@ -1,3 +1,4 @@
-yfinance
-ta
+streamlit
+pandas
+numpy
 plotly
